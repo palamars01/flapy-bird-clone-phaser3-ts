@@ -2,20 +2,16 @@ import Phaser from "phaser";
 
 import { Preload, Menu, Game, BestScore } from "./scenes";
 
-
-
-export const sharedConfig={
-    gameWidth:400,
-    gameHeight:600
-}
+const WIDTH = 400;
+const HEIGHT = 500;
 
 const div: HTMLElement = document.querySelector(".info")!;
-div.style.width = `${sharedConfig.gameWidth}px`;
-div.style.height = `${sharedConfig.gameHeight}px`;
+div.style.width = `${WIDTH}px`;
+div.style.height = `${HEIGHT}px`;
 
 const config: Phaser.Types.Core.GameConfig = {
-  width: sharedConfig.gameWidth,
-  height: sharedConfig.gameHeight,
+  width: WIDTH,
+  height: HEIGHT,
   type: Phaser.AUTO,
   pixelArt: true,
   physics: {

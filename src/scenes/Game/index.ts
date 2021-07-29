@@ -1,29 +1,28 @@
-import { IMenuItem } from "./../Base";
-import { Base } from "../Base";
+import { Base, IMenuItem } from "../Base";
 
-import { Pipes, Bird } from "../../models";
+import { PipesGroup, Bird } from "../../models";
 import { GameStateControls } from "../../controls/GameStateControls";
 
+type Text = Phaser.GameObjects.Text;
+
 export class Game extends Base {
-  isGamePaused!: boolean;
+  public isGamePaused!: boolean;
+  public isGameOver!: boolean;
 
-  private obstacles!: Pipes;
-  private pipesGroup!: Phaser.Physics.Arcade.Group;
-
-  player!: Bird;
-  bird!: Phaser.Physics.Arcade.Sprite;
+  public pipesGroup!: PipesGroup;
+  public bird!: Bird;
 
   score!: number;
-  scoreMessage!: Phaser.GameObjects.Text;
+  scoreMessage!: Text;
   currentBestScore!: number;
 
   pauseButton!: Phaser.GameObjects.Image;
 
   menu!: IMenuItem[];
-  private countDownMessage!: Phaser.GameObjects.Text | null;
+  private countDownMessage!: Text | undefined;
   private timeToStart!: number;
   private timer!: Phaser.Time.TimerEvent | null;
-  gameStateControls!: GameStateControls;
+  public gameStateControls!: GameStateControls;
 
   constructor() {
     super("Game");
@@ -33,14 +32,11 @@ export class Game extends Base {
     super.init();
 
     this.isGamePaused = false;
+    this.isGameOver = false;
     this.timeToStart = 3;
     this.score = 0;
 
     this.currentBestScore = this.bestScore;
-    this.countDownMessage = null;
-
-    this.obstacles = new Pipes(this);
-    this.player = new Bird(this);
 
     this.gameStateControls = new GameStateControls(this);
 
@@ -51,6 +47,7 @@ export class Game extends Base {
   }
 
   public create(): void {
+    const { setUserEvents, gameOver } = this.gameStateControls;
     /*BACKGROUND */
     super.create();
 
@@ -58,38 +55,28 @@ export class Game extends Base {
     this.sound.play("audio", { volume: 0.1, loop: true });
 
     /*GAME OBJECTS */
-    this.bird = this.player.createBird();
+    this.bird = new Bird(this, this.canvasW * 0.1, this.center[1], "bird");
 
-    this.pipesGroup = this.obstacles.createPipesGroup();
+    this.pipesGroup = new PipesGroup(this);
 
     /*HANDLE COLLIDES */
-    this.collideHandler();
+    this.bird.addCollider(this.pipesGroup, gameOver);
 
     /*SCORE */
-    this.createMessage(16, 16, `Score: ${this.score}`);
+    this.scoreMessage = this.createMessage(16, 16, `Score: ${this.score}`);
 
     /*PAUSE BUTTON */
     this.createPauseButton();
 
     /** KEYS BINDINGS */
-    this.gameStateControls.setUserEvents();
+    setUserEvents();
   }
 
   public update(time: number, dt: number): void {
-    this.obstacles.cyclePipesCreate();
-    this.obstacles.destroyPipe();
+    this.pipesGroup.cyclePipesCreate();
+    this.pipesGroup.destroyPipe();
 
-    this.player.checkBirdPosition();
-
-    this.changeCoundownHandler();
-  }
-
-  private collideHandler(): void {
-    this.physics.add.collider(
-      this.bird,
-      this.pipesGroup,
-      this.gameStateControls.gameOver
-    );
+    this.bird.checkBirdPosition();
   }
 
   private createPauseButton(): void {
@@ -110,16 +97,12 @@ export class Game extends Base {
     }
   };
 
-  public createMessage(
+  public createMessage = (
     x: number,
     y: number,
     text: string,
-    styleConfig = { fontSize: "32px", color: "#000" }
-  ): Phaser.GameObjects.Text {
-    return (this.scoreMessage = this.add
-      .text(x, y, text, styleConfig)
-      .setDepth(2));
-  }
+    styleConfig = this.fontConfig
+  ): Text => this.add.text(x, y, text, styleConfig).setDepth(2);
 
   public saveBestScore(): void {
     this.currentBestScore = Math.max(this.score, this.bestScore);
@@ -131,7 +114,7 @@ export class Game extends Base {
       menuItem.textObject?.setVisible(showMenu);
     });
 
-    !showMenu ? this.createCountDownMessage() : null;
+    !showMenu && !this.countDownMessage ? this.createCountDownMessage() : null;
   }
 
   public setMenuEvents = (menuItem: IMenuItem): void => {
@@ -150,38 +133,32 @@ export class Game extends Base {
   };
 
   private createCountDownMessage(): void {
-    if (!this.countDownMessage) {
-      this.countDownMessage = this.createMessage(
-        ...this.center,
-        `Fly in ${this.timeToStart}`,
-        { fontSize: this.fontSize, color: this.fontColor }
-      ).setOrigin(0.5, 1);
-    }
+    this.countDownMessage = this.createMessage(
+      ...this.center,
+      `Fly in ${this.timeToStart}`
+    ).setOrigin(0.5, 1);
+    this.changeCoundownHandler();
   }
+
   private changeCoundownHandler(): void {
-    if (!this.isGamePaused || this.timer) return;
+    this.timer = this.time.addEvent({
+      delay: 1000,
+      callback: () => {
+        if (this.timeToStart === 0 && this.isGamePaused) {
+          this.timeToStart = 3;
 
-    if (this.countDownMessage && !this.timer) {
-      this.timer = this.time.addEvent({
-        delay: 1000,
-        callback: () => {
-          if (this.timeToStart === 0 && this.isGamePaused) {
-            this.timer?.remove();
-            this.timer = null;
+          this.timer?.remove();
+          this.timer = null;
 
-            this.countDownMessage?.destroy();
-            this.countDownMessage = null;
+          this.countDownMessage?.destroy();
+          this.countDownMessage = undefined;
 
-            this.timeToStart = 3;
-
-            this.gameStateControls.resumeGame();
-          } else {
-            this.countDownMessage?.setText(`Fly in ${this.timeToStart}`);
-            this.timeToStart--;
-          }
-        },
-        repeat: this.timeToStart,
-      });
-    }
+          this.gameStateControls.resumeGame();
+        } else {
+          this.countDownMessage?.setText(`Fly in ${this.timeToStart--}`);
+        }
+      },
+      repeat: 3,
+    });
   }
 }

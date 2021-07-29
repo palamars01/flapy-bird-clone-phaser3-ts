@@ -1,7 +1,5 @@
 import Phaser from "phaser";
 
-import { sharedConfig } from "../../main";
-
 export interface IMenuItem {
   scene?: string;
   title: string;
@@ -9,41 +7,40 @@ export interface IMenuItem {
 }
 
 export class Base extends Phaser.Scene {
-  public canvasW: number;
-  public canvasH: number;
+  public canvasW!: number;
+  public canvasH!: number;
 
-  public menuCoords: number[];
+  public menuCoords!: [number, number];
 
-  public fontColor: string;
-  public fontHoverColor: string;
-  public fontSize: string;
+  public fontConfig: {
+    fontColor: string;
+    fontHoverColor: string;
+    fontSize: string;
+  };
 
   public bestScore!: number;
 
-  public isGoBack: boolean | undefined;
-  private type: string;
-
   public bgRect?: Phaser.GameObjects.Rectangle;
-  center: [x: number, y: number];
+  public center!: [x: number, y: number];
 
-  constructor(type: string, isGoBack?: boolean) {
-    super(type);
-    this.type = type;
-    this.isGoBack = isGoBack;
-    this.canvasW = sharedConfig.gameWidth;
-    this.canvasH = sharedConfig.gameHeight;
-    this.center = [this.canvasW * 0.5, this.canvasH * 0.5];
-
-    this.menuCoords = [this.canvasW * 0.5, this.canvasH * 0.5];
-
-    this.fontSize = "33px";
-    this.fontColor = "#fff";
-    this.fontHoverColor = "#ffd700";
+  constructor(private sceneKey: string, private isGoBack?: boolean) {
+    super(sceneKey);
+    this.fontConfig = {
+      fontSize: "32px",
+      fontColor: "#fff",
+      fontHoverColor: "#ffd700",
+    };
   }
 
   public init(): void {
     let scoreFromStorgae = localStorage.getItem("bestScore");
     this.bestScore = scoreFromStorgae ? parseInt(scoreFromStorgae) : 0;
+
+    this.canvasW = this.game.canvas.width;
+    this.canvasH = this.game.canvas.height;
+
+    this.center = [this.canvasW * 0.5, this.canvasH * 0.5];
+    this.menuCoords = [...this.center];
 
     this.cameras.main.setZoom(1);
 
@@ -69,25 +66,31 @@ export class Base extends Phaser.Scene {
     menu: IMenuItem[] | null,
     setMenuEvents: (menuItem: IMenuItem) => void
   ): void {
-    if (this.type !== "Menu") {
+    const fontConfig = this.fontConfig;
+
+    if (this.sceneKey !== "Menu") {
       this.bgRect = this.add
         .rectangle(0, 0, this.canvasW, this.canvasH, 0x000, 0.3)
         .setOrigin(0);
     }
+
+    const onPointerHandler = (menuItem: IMenuItem, fillColor: string): void => {
+      menuItem.textObject?.setStyle({
+        fill: fillColor,
+      });
+    };
+
     if (menu) {
       menu.forEach((menuItem) => {
         menuItem.textObject = this.add
-          .text(this.menuCoords[0], this.menuCoords[1] - 50, menuItem.title, {
-            fontSize: this.fontSize,
-            color: this.fontColor,
-          })
+          .text(...this.menuCoords, menuItem.title, fontConfig)
           .setOrigin(0.5, 1)
           .setDepth(1)
-          .on("pointerover", () => {
-            menuItem.textObject?.setStyle({ fill: this.fontHoverColor });
-          })
+          .on("pointerover", () =>
+            onPointerHandler(menuItem, fontConfig.fontHoverColor)
+          )
           .on("pointerout", () =>
-            menuItem.textObject?.setStyle({ fill: this.fontColor })
+            onPointerHandler(menuItem, fontConfig.fontColor)
           );
 
         setMenuEvents(menuItem);

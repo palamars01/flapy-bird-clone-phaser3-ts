@@ -1,2 +1,2 @@
 export { Bird } from "./Bird";
-export { Pipes } from "./Pipes";
+export { PipesGroup } from "./Pipes";

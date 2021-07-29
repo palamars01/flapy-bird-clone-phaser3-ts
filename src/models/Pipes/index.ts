@@ -1,6 +1,9 @@
 import { Game } from "../../scenes/Game";
 
-import rndBetween from "../../scenes/Game/randomBetween";
+const rndBetween = (min: number, max: number): number =>
+  Phaser.Math.Between(min, max);
+
+type Sprite = Phaser.GameObjects.Sprite;
 
 enum Difficulties {
   Easy = 1,
@@ -8,119 +11,109 @@ enum Difficulties {
   Hard = 0.5,
 }
 
-export class Pipes {
-  private scene: Game;
-
-  private pipesGroup!: Phaser.Physics.Arcade.Group;
-  private topPipe!: Phaser.Types.Physics.Arcade.GameObjectWithDynamicBody;
-  private bottomPipe!: Phaser.Types.Physics.Arcade.GameObjectWithDynamicBody;
-
-  private pipesDistX!: number;
-  private pipesDistYRange: [number, number];
-  private pipesDistXRange: [number, number];
+export class PipesGroup extends Phaser.Physics.Arcade.Group {
+  private distanceYRange: [number, number];
+  private distanceXRange: [number, number];
 
   private difficultyLevel: number;
 
-  private minPipeHeight: number;
-  private pipeVelocityX: number;
+  private velocityX: number;
 
-  constructor(scene: Game) {
-    this.scene = scene;
-    this.pipesGroup = scene.physics.add.group();
-
-    this.pipesDistX = -this.scene.canvasW * 0.2; // First pipe start position
-
-    this.pipesDistYRange = [300, 400];
-    this.pipesDistXRange = [250, 350];
-
-    this.minPipeHeight = 50;
-    this.pipeVelocityX = -150;
+  constructor(public scene: Game) {
+    super(scene.physics.world, scene, {
+      immovable: true,
+    });
 
     this.difficultyLevel = Difficulties.Easy;
+
+    this.distanceYRange = [200, 300];
+    this.distanceXRange = [250, 350];
+
+    this.velocityX = -150;
+
+    this.initPipes();
   }
 
-  //   private createPipes(x:number,y:number,pipesDistY:number):Phaser.Types.Physics.Arcade.GameObjectWithDynamicBody[]{
+  private createPipe = (
+    x: number,
+    y: number,
+    origin: number[],
+    spriteKey: string = "pipe"
+  ): Sprite => this.scene.add.sprite(x, y, spriteKey).setOrigin(...origin);
 
-  //     return [this.topPipe,this.bottomPipe]
-  //   }
+  private pipesStartPosition: number = this.scene.canvasW * 0.5;
+  public initPipes(): void {
+    const scene = this.scene;
 
-  public createPipesGroup(): Phaser.Physics.Arcade.Group {
     const pipesDistY = rndBetween(
-      this.pipesDistYRange[0] * this.difficultyLevel,
-      this.pipesDistYRange[1] * this.difficultyLevel
+      this.distanceYRange[0] * this.difficultyLevel,
+      this.distanceYRange[1] * this.difficultyLevel
     );
 
+    const minPipeHeight: number = 50;
     const pipeCoords = {
-      x: this.scene.canvasW + this.pipesDistX,
-      y: rndBetween(
-        this.minPipeHeight,
-        this.scene.canvasH - this.minPipeHeight - pipesDistY
-      ),
+      x: this.pipesStartPosition,
+      y: rndBetween(minPipeHeight, scene.canvasH - minPipeHeight - pipesDistY),
     };
 
     const { x, y } = pipeCoords;
 
-    this.topPipe = this.pipesGroup.create(x, y, "top-pipe").setOrigin(0, 1);
+    const topPipe: Sprite = this.createPipe(x, y, [0, 1]);
+    const bottomPipe: Sprite = this.createPipe(x, y + pipesDistY, [0]);
 
-    this.topPipe.body.setImmovable(true);
+    this.addMultiple([topPipe, bottomPipe], true);
 
-    this.bottomPipe = this.pipesGroup
-      .create(x, y + pipesDistY, "bottom-pipe")
-      .setOrigin(0);
+    this.setVelocity(this.velocityX, 0);
 
-    this.bottomPipe.body.setImmovable(true);
-
-    this.pipesGroup.setVelocity(this.pipeVelocityX, 0);
-
-    this.pipesDistX = 0;
-
-    return this.pipesGroup;
+    this.pipesStartPosition = scene.canvasW;
   }
 
   public cyclePipesCreate(): void {
     if (
-      this.pipesGroup.getLast(true).x <=
-      this.scene.canvasW - rndBetween(...this.pipesDistXRange)
+      this.getLast(true).x <=
+      this.scene.canvasW - rndBetween(...this.distanceXRange)
     ) {
-      this.createPipesGroup();
+      this.initPipes();
     }
   }
 
   public destroyPipe(): void {
-    this.pipesGroup
-      .getChildren()
-      .forEach((pipe: Phaser.GameObjects.GameObject): void => {
-        if (pipe.body.position.x < -this.topPipe.body.width) {
-          this.handleScoreUpdate(pipe);
-          pipe.destroy();
-        }
-      });
+    const firstPipe: Sprite = this.getFirstAlive();
+
+    if (firstPipe.x + firstPipe.width < 0) {
+      this.handleScoreUpdate(firstPipe);
+      firstPipe.destroy();
+    }
   }
 
-  private pipes: Phaser.GameObjects.GameObject[] = [];
+  private pipesToDestroy: number = 0;
   private handleScoreUpdate(pipe: Phaser.GameObjects.GameObject) {
-    this.pipes.push(pipe);
-    if (this.pipes.length === 2) {
-      this.scene.score++;
+    const scene = this.scene;
 
-      this.scene.scoreMessage.setText(`Score: ${this.scene.score}`);
-      this.scene.saveBestScore();
+    this.pipesToDestroy++;
+    if (this.pipesToDestroy === 2) {
+      scene.score++;
 
-      this.pipes = [];
+      scene.scoreMessage.setText(`Score: ${this.scene.score}`);
+      scene.saveBestScore();
+
+      this.pipesToDestroy = 0;
     }
     this.updateDifficulty();
   }
 
   private updateDifficulty(): void {
-    if (this.scene.score === 5 && this.difficultyLevel === Difficulties.Easy) {
+    const scene = this.scene;
+
+    if (scene.score === 5 && this.difficultyLevel === Difficulties.Easy) {
       this.difficultyLevel = Difficulties.Normal;
-      this.pipeVelocityX *= 1.2;
+      this.velocityX *= 1.2;
     } else if (
-      this.scene.score === 10 &&
+      scene.score === 10 &&
       this.difficultyLevel === Difficulties.Normal
     ) {
       this.difficultyLevel = Difficulties.Hard;
-      this.pipeVelocityX *= 1.2;
+      this.velocityX *= 1.2;
     }
   }
 }

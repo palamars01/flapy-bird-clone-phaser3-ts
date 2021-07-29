@@ -1,80 +1,70 @@
 import { Game } from "../scenes/Game";
 
 export class GameStateControls {
-  scene: Game;
-  constructor(scene: Game) {
-    this.scene = scene;
-
-    this.pauseGame = this.pauseGame;
-    this.resumeGame = this.resumeGame;
-    this.gameOver = this.gameOver;
-  }
+  constructor(private scene: Game) {}
 
   public pauseGame(): void {
-    this.scene.bgRect?.setVisible(true);
-    this.scene.pauseButton.setAlpha(0.5);
-    this.scene.sound.pauseAll();
+    const scene = this.scene;
 
-    this.scene.bird.setVelocityY(0);
-    this.scene.bird.anims.pause();
-    this.scene.sound.play("flap", { volume: 0 });
-    this.scene.physics.pause();
+    scene.bgRect?.setVisible(true);
+    scene.pauseButton.setAlpha(0.5);
+    scene.sound.pauseAll();
 
-    if (this.scene.menu[0].textObject) {
-      this.scene.showPauseMenu(true);
+    scene.bird.setVelocityY(0);
+    scene.bird.anims.pause();
+    scene.sound.play("flap", { volume: 0 });
+    scene.physics.pause();
+
+    if (scene.menu[0].textObject) {
+      scene.showPauseMenu(true);
     } else {
-      this.scene.drawMenu(this.scene.menu, this.scene.setMenuEvents);
+      scene.drawMenu(scene.menu, scene.setMenuEvents);
     }
   }
 
   public resumeGame(): void {
-    this.scene.physics.resume();
+    const scene = this.scene;
 
-    this.scene.sound.resumeAll();
-
-    this.scene.bird.anims.resume();
-
-    this.scene.bgRect?.setVisible(false);
-
-    this.scene.isGamePaused = !this.scene.isGamePaused;
-
-    this.scene.pauseButton.setAlpha(1);
+    scene.physics.resume();
+    scene.sound.resumeAll();
+    scene.bird.anims.resume();
+    scene.bgRect?.setVisible(false);
+    scene.isGamePaused = !scene.isGamePaused;
+    scene.pauseButton.setAlpha(1);
   }
 
   public gameOver = (): void => {
-    this.scene.bird.anims.stop();
-    this.scene.bird.setTint(0xff0000);
+    const scene = this.scene;
 
-    this.scene.input.keyboard.removeAllKeys();
+    scene.bird.anims.stop();
+    scene.bird.setTint(0xff0000);
 
-    this.scene.pauseButton.removeAllListeners();
+    scene.input.keyboard.removeAllKeys();
 
-    this.scene.sound.stopByKey("audio");
-    this.scene.sound.play("collide", { volume: 0.3 });
+    scene.pauseButton.removeAllListeners();
 
-    this.scene.physics.pause();
+    scene.sound.stopByKey("audio");
+    scene.sound.play("collide", { volume: 0.3 });
 
-    this.scene.createMessage(
-      16,
-      45,
-      `Best score: ${this.scene.currentBestScore}`
-    );
+    scene.physics.pause();
 
-    this.scene.time.addEvent({
+    scene.createMessage(16, 45, `Best score: ${scene.currentBestScore}`);
+
+    scene.time.addEvent({
       delay: 1500,
-      callback: () => this.scene.scene.restart(),
+      callback: () => scene.scene.restart(),
     });
   };
 
-  public setUserEvents(): void {
-    this.scene.input.keyboard
-      .addKey("SPACE")
-      .on("down", this.scene.player.flap);
+  public setUserEvents = (): void => {
+    const scene = this.scene;
 
-    this.scene.input.keyboard
-      .addKey("ESC")
-      .on("down", this.scene.onPressPauseButton);
+    const addKeyOnDown = (key: string, cb: () => void) =>
+      scene.input.keyboard.addKey(key).on("down", cb);
 
-    this.scene.pauseButton.on("pointerdown", this.scene.onPressPauseButton);
-  }
+    addKeyOnDown("SPACE", scene.bird.flap);
+    addKeyOnDown("ESC", scene.onPressPauseButton);
+
+    scene.pauseButton.on("pointerdown", this.scene.onPressPauseButton);
+  };
 }

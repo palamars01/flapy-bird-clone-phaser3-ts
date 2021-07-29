@@ -1,44 +1,37 @@
 import { Game } from "../../scenes/Game";
 
-export class Bird {
-  scene: Game;
+type CollisionObject = Phaser.GameObjects.Group;
 
-  bird!: Phaser.Physics.Arcade.Sprite;
-  birdCoords: { x: number; y: number };
+export class Bird extends Phaser.Physics.Arcade.Sprite {
   birdGravityY: number;
   flapVelocityY: number;
-  isGameOver!: boolean;
 
-  constructor(scene: Game) {
-    this.scene = scene;
-    this.birdCoords = {
-      x: this.scene.canvasW * 0.1,
-      y: this.scene.center[1],
-    };
+  constructor(public scene: Game, x: number, y: number, spriteKey: string) {
+    super(scene, x, y, "bird", 8);
 
     this.birdGravityY = 600;
     this.flapVelocityY = 300;
+
+    this.init();
   }
 
-  createBird(): Phaser.Physics.Arcade.Sprite {
-    this.isGameOver = false;
-    this.bird = this.scene.physics.add
-      .sprite(this.birdCoords.x, this.birdCoords.y, "bird", 10)
-      .setFlipX(true)
-      .setScale(3)
-      .setBodySize(16, 10);
+  private init(): void {
+    this.scene.physics.add.existing(this);
+    this.scene.add.existing(this);
 
-    this.bird.setGravityY(this.birdGravityY);
+    this.setFlipX(true);
+    this.setScale(3);
+
+    this.setBodySize(15, 8);
+    this.setGravityY(this.birdGravityY);
 
     this.createAnimations();
-
-    return this.bird;
   }
 
   private createAnimations(): void {
-    this.bird.anims.create({
+    this.anims.create({
       key: "fly",
-      frames: this.scene.anims.generateFrameNumbers("bird", {
+      frames: this.anims.generateFrameNumbers("bird", {
         start: 8,
         end: 15,
       }),
@@ -47,23 +40,28 @@ export class Bird {
     });
   }
 
-  flap = (): void => {
-    if (!this.isGameOver && !this.scene.isGamePaused) {
-      this.bird.setVelocityY(-this.flapVelocityY);
-      this.scene.sound.play("flap", { volume: 0.1 });
-      this.bird.play("fly");
+  public flap = (): void => {
+    const scene = this.scene;
+    if (!scene.isGameOver && !scene.isGamePaused) {
+      this.setVelocityY(-this.flapVelocityY);
+      scene.sound.play("flap", { volume: 0.1 });
+      this.play("fly");
     }
   };
 
-  checkBirdPosition() {
-    if (
-      this.bird.y < -this.bird.height * 0.5 ||
-      this.bird.y > this.scene.canvasH + this.bird.height * 0.5
-    ) {
-      if (!this.isGameOver) {
-        this.isGameOver = true;
-        this.scene.gameStateControls.gameOver();
+  public checkBirdPosition(): void {
+    const scene = this.scene;
+    if (this.y < 0 || this.y > scene.canvasH + this.height * 0.5) {
+      if (!scene.isGameOver) {
+        scene.isGameOver = true;
+        scene.gameStateControls.gameOver();
       }
     }
+  }
+  public addCollider(
+    collisionObj: CollisionObject,
+    cb?: ArcadePhysicsCallback | undefined
+  ): void {
+    this.scene.physics.add.collider(this, collisionObj, cb);
   }
 }
