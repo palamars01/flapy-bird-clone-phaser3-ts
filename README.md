@@ -1,4 +1,4 @@
-Simple flapy bird-like game w/ Typescript & phaser3
+Simple flapy bird-like game. w/ Typescript & phaser3(3.55.2)
 
 ![Menu](https://user-images.githubusercontent.com/77688258/127531103-7b938541-b6ec-441f-8a0e-c1008bfa8d32.png)
 
@@ -11,5 +11,3 @@ Simple flapy bird-like game w/ Typescript & phaser3
 ![Collision](https://user-images.githubusercontent.com/77688258/127531096-74aba413-531c-41ab-9c0f-8119264cad7a.png)
 
 ![BestScoreScreen](https://user-images.githubusercontent.com/77688258/127531094-b2cc7700-3d09-4de4-af0d-6f9aaad653d4.png)
-
-
