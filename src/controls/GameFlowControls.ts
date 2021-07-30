@@ -1,6 +1,6 @@
 import { Game } from "../scenes/Game";
 
-export class GameStateControls {
+export class GameFlowControls {
   constructor(private scene: Game) {}
 
   public pauseGame(): void {
@@ -54,17 +54,5 @@ export class GameStateControls {
       delay: 1500,
       callback: () => scene.scene.restart(),
     });
-  };
-
-  public setUserEvents = (): void => {
-    const scene = this.scene;
-
-    const addKeyOnDown = (key: string, cb: () => void) =>
-      scene.input.keyboard.addKey(key).on("down", cb);
-
-    addKeyOnDown("SPACE", scene.bird.flap);
-    addKeyOnDown("ESC", scene.onPressPauseButton);
-
-    scene.pauseButton.on("pointerdown", this.scene.onPressPauseButton);
   };
 }

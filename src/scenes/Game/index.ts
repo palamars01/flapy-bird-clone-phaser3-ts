@@ -1,7 +1,7 @@
 import { Base, IMenuItem } from "../Base";
 
 import { PipesGroup, Bird } from "../../models";
-import { GameStateControls } from "../../controls/GameStateControls";
+import { GameFlowControls } from "../../controls/GameFlowControls";
 
 type Text = Phaser.GameObjects.Text;
 
@@ -12,17 +12,16 @@ export class Game extends Base {
   public pipesGroup!: PipesGroup;
   public bird!: Bird;
 
-  score!: number;
-  scoreMessage!: Text;
-  currentBestScore!: number;
+  public score!: number;
+  public scoreMessage!: Text;
+  public currentBestScore!: number;
 
   pauseButton!: Phaser.GameObjects.Image;
 
   menu!: IMenuItem[];
-  private countDownMessage!: Text | undefined;
-  private timeToStart!: number;
-  private timer!: Phaser.Time.TimerEvent | null;
-  public gameStateControls!: GameStateControls;
+  private countMessage!: Text | null;
+  private counter!: number;
+  public gameFlowControls!: GameFlowControls;
 
   constructor() {
     super("Game");
@@ -33,12 +32,12 @@ export class Game extends Base {
 
     this.isGamePaused = false;
     this.isGameOver = false;
-    this.timeToStart = 3;
+    this.counter = 3;
     this.score = 0;
 
     this.currentBestScore = this.bestScore;
 
-    this.gameStateControls = new GameStateControls(this);
+    this.gameFlowControls = new GameFlowControls(this);
 
     this.menu = [
       { scene: undefined, title: "Resume" },
@@ -47,7 +46,6 @@ export class Game extends Base {
   }
 
   public create(): void {
-    const { setUserEvents, gameOver } = this.gameStateControls;
     /*BACKGROUND */
     super.create();
 
@@ -60,7 +58,7 @@ export class Game extends Base {
     this.pipesGroup = new PipesGroup(this);
 
     /*HANDLE COLLIDES */
-    this.bird.addCollider(this.pipesGroup, gameOver);
+    this.bird.addCollider(this.pipesGroup, this.gameFlowControls.gameOver);
 
     /*SCORE */
     this.scoreMessage = this.createMessage(16, 16, `Score: ${this.score}`);
@@ -69,7 +67,7 @@ export class Game extends Base {
     this.createPauseButton();
 
     /** KEYS BINDINGS */
-    setUserEvents();
+    this.setUserEvents();
   }
 
   public update(time: number, dt: number): void {
@@ -88,16 +86,26 @@ export class Game extends Base {
       .setOrigin(1);
   }
 
+  private setUserEvents = (): void => {
+    const addKeyOnDown = (key: string, cb: () => void) =>
+      this.input.keyboard.addKey(key).on("down", cb);
+
+    addKeyOnDown("SPACE", this.bird.flap);
+    addKeyOnDown("ESC", this.onPressPauseButton);
+
+    this.pauseButton.on("pointerdown", this.onPressPauseButton);
+  };
+
   public onPressPauseButton = (): void => {
     if (!this.isGamePaused) {
-      this.gameStateControls.pauseGame();
+      this.gameFlowControls.pauseGame();
       this.isGamePaused = !this.isGamePaused;
     } else {
       this.showPauseMenu(false);
     }
   };
 
-  public createMessage = (
+  private createMessage = (
     x: number,
     y: number,
     text: string,
@@ -109,15 +117,15 @@ export class Game extends Base {
     localStorage.setItem("bestScore", `${this.currentBestScore}`);
   }
 
-  public showPauseMenu(showMenu: boolean): void {
+  private showPauseMenu(showMenu: boolean): void {
     this.menu?.forEach((menuItem: IMenuItem) => {
       menuItem.textObject?.setVisible(showMenu);
     });
 
-    !showMenu && !this.countDownMessage ? this.createCountDownMessage() : null;
+    !showMenu && !this.countMessage?.alpha && this.createCountDownMessage();
   }
 
-  public setMenuEvents = (menuItem: IMenuItem): void => {
+  private setMenuEvents = (menuItem: IMenuItem): void => {
     let textObj = menuItem.textObject;
     textObj?.setInteractive();
 
@@ -133,32 +141,40 @@ export class Game extends Base {
   };
 
   private createCountDownMessage(): void {
-    this.countDownMessage = this.createMessage(
-      ...this.center,
-      `Fly in ${this.timeToStart}`
-    ).setOrigin(0.5, 1);
+    if (!this.countMessage) {
+      this.countMessage = this.createMessage(
+        ...this.center,
+        `Fly in ${this.counter}`
+      ).setOrigin(0.5, 1);
+    }
     this.changeCoundownHandler();
   }
 
   private changeCoundownHandler(): void {
-    this.timer = this.time.addEvent({
+    let timer: Phaser.Time.TimerEvent;
+    const countMessage = this.countMessage!;
+    let counter = this.counter;
+
+    countMessage.setAlpha(1);
+
+    const timerConfig = {
       delay: 1000,
       callback: () => {
-        if (this.timeToStart === 0 && this.isGamePaused) {
-          this.timeToStart = 3;
+        if (!counter) {
+          timer.remove();
+          timer.destroy();
 
-          this.timer?.remove();
-          this.timer = null;
+          countMessage.setAlpha(0);
+          countMessage.setText(`Fly in ${(counter = 3)}`);
 
-          this.countDownMessage?.destroy();
-          this.countDownMessage = undefined;
-
-          this.gameStateControls.resumeGame();
+          this.gameFlowControls.resumeGame();
         } else {
-          this.countDownMessage?.setText(`Fly in ${this.timeToStart--}`);
+          countMessage.setText(`Fly in ${counter--}`);
         }
       },
       repeat: 3,
-    });
+    };
+
+    timer = this.time.addEvent(timerConfig);
   }
 }

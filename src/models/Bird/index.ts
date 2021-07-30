@@ -54,7 +54,7 @@ export class Bird extends Phaser.Physics.Arcade.Sprite {
     if (this.y < 0 || this.y > scene.canvasH + this.height * 0.5) {
       if (!scene.isGameOver) {
         scene.isGameOver = true;
-        scene.gameStateControls.gameOver();
+        scene.gameFlowControls.gameOver();
       }
     }
   }

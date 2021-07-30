@@ -13,10 +13,7 @@ export class BestScore extends Base {
     super.create();
 
     this.add
-      .text(...this.center, `Best Score: ${this.bestScore}`, {
-        fontSize: this.fontSize,
-        color: this.fontColor,
-      })
+      .text(...this.center, `Best Score: ${this.bestScore}`, this.fontConfig)
       .setOrigin(0.5, 1);
   }
 }

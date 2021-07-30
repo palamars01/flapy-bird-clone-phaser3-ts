@@ -1,7 +1,6 @@
 import { Game } from "../../scenes/Game";
 
-const rndBetween = (min: number, max: number): number =>
-  Phaser.Math.Between(min, max);
+const between = Phaser.Math.Between;
 
 type Sprite = Phaser.GameObjects.Sprite;
 
@@ -45,7 +44,7 @@ export class PipesGroup extends Phaser.Physics.Arcade.Group {
   public initPipes(): void {
     const scene = this.scene;
 
-    const pipesDistY = rndBetween(
+    const pipesDistY = between(
       this.distanceYRange[0] * this.difficultyLevel,
       this.distanceYRange[1] * this.difficultyLevel
     );
@@ -53,7 +52,7 @@ export class PipesGroup extends Phaser.Physics.Arcade.Group {
     const minPipeHeight: number = 50;
     const pipeCoords = {
       x: this.pipesStartPosition,
-      y: rndBetween(minPipeHeight, scene.canvasH - minPipeHeight - pipesDistY),
+      y: between(minPipeHeight, scene.canvasH - minPipeHeight - pipesDistY),
     };
 
     const { x, y } = pipeCoords;
@@ -71,7 +70,7 @@ export class PipesGroup extends Phaser.Physics.Arcade.Group {
   public cyclePipesCreate(): void {
     if (
       this.getLast(true).x <=
-      this.scene.canvasW - rndBetween(...this.distanceXRange)
+      this.scene.canvasW - between(...this.distanceXRange)
     ) {
       this.initPipes();
     }
